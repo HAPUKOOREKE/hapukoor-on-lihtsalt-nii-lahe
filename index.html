@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="et">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hapukoore Jahimehed</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: Arial, sans-serif;
+        }
+        
+        #gameContainer {
+            position: relative;
+            width: 800px;
+            height: 600px;
+            background: linear-gradient(180deg, #87CEEB 0%, #90EE90 100%);
+            border: 3px solid #333;
+            overflow: hidden;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.3);
+        }
+        
+        #aunt {
+            position: absolute;
+            width: 50px;
+            height: 60px;
+            background: #4169E1;
+            border-radius: 15px 15px 5px 5px;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            overflow: hidden;
+        }
+        
+        .hair {
+            width: 50px;
+            height: 20px;
+            background: #9370DB;
+            border-radius: 50% 50% 0 0;
+            position: relative;
+        }
+        
+        .hair::before,
+        .hair::after {
+            content: '';
+            position: absolute;
+            width: 12px;
+            height: 15px;
+            background: #9370DB;
+            top: 10px;
+            border-radius: 50% 50% 0 0;
+        }
+        
+        .hair::before {
+            left: 5px;
+        }
+        
+        .hair::after {
+            right: 5px;
+        }
+        
+        .face {
+            width: 40px;
+            height: 30px;
+            background: #FDBCB4;
+            border-radius: 5px;
+            position: relative;
+            margin-top: 2px;
+        }
+        
+        .mouth {
+            position: absolute;
+            width: 30px;
+            height: 25px;
+            bottom: 2px;
+            left: 5px;
+            background: #000;
+            border-radius: 0 0 15px 15px;
+            display: none;
+        }
+        
+        .mouth.open {
+            display: block;
+            width: 35px;
+            height: 30px;
+        }
+        
+        #sourCream {
+            position: absolute;
+            width: 50px;
+            height: 65px;
+            background: #FFFACD;
+            border: 2px solid #E8E8E8;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.8);
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
+            align-items: center;
+            overflow: hidden;
+        }
+        
+        #sourCream::before {
+            content: '';
+            width: 50px;
+            height: 18px;
+            background: #DC143C;
+            border-radius: 4px 4px 2px 2px;
+            box-shadow: inset 0 1px 3px rgba(0,0,0,0.3), 0 2px 4px rgba(0,0,0,0.2);
+        }
+        
+        #sourCream::after {
+            content: 'HAPE';
+            position: absolute;
+            top: 22px;
+            font-size: 10px;
+            font-weight: bold;
+            color: #888;
+            letter-spacing: 1px;
+        }
+        
+        #ui {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: #333;
+            font-size: 18px;
+            background: rgba(255,255,255,0.8);
+            padding: 10px 15px;
+            border-radius: 5px;
+            z-index: 10;
+        }
+        
+        #gameOver {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0,0,0,0.9);
+            color: #fff;
+            padding: 40px;
+            border-radius: 20px;
+            text-align: center;
+            z-index: 20;
+            display: none;
+            font-size: 24px;
+        }
+        
+        #gameOver button {
+            margin-top: 20px;
+            padding: 10px 30px;
+            font-size: 18px;
+            background: #4169E1;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+        
+        #gameOver button:hover {
+            background: #9370DB;
+        }
+        
+        .eating-animation {
+            animation: eat 0.6s ease-in-out;
+        }
+        
+        @keyframes eat {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(0.3); opacity: 0; }
+        }
+        
+        #speedometer {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            background: rgba(255,255,255,0.8);
+            padding: 10px 15px;
+            border-radius: 5px;
+            font-size: 14px;
+            z-index: 10;
+        }
+        
+        .obstacle {
+            position: absolute;
+            background: rgba(100, 100, 100, 0.7);
+            border: 2px solid #333;
+            box-shadow: inset 0 1px 3px rgba(0,0,0,0.5), 0 2px 5px rgba(0,0,0,0.3);
+        }
+    </style>
+</head>
+<body>
+    <div id="gameContainer">
+        <div id="ui">
+            <div>Käsud: Nooled / Hiir</div>
+            <div>Seisund: <span id="status">Jooksmine...</span></div>
+        </div>
+        
+        <div id="aunt">
+            <div class="hair"></div>
+            <div class="face">
+                <div class="mouth"></div>
+            </div>
+        </div>
+        
+        <div id="sourCream"></div>
+        
+        <div id="speedometer">
+            Hapukoore kiirus: <span id="speed">100%</span>
+        </div>
+        
+        <div id="gameOver">
+            <div style="font-size: 32px; margin-bottom: 20px;">🎉 VÕIT! 🎉</div>
+            <div>Sa söid hapukoore!</div>
+            <button onclick="location.reload()">Uus Mäng</button>
+        </div>
+    </div>
+
+    <script>
+        const gameContainer = document.getElementById('gameContainer');
+        const aunt = document.getElementById('aunt');
+        const sourCream = document.getElementById('sourCream');
+        const gameOverScreen = document.getElementById('gameOver');
+        const statusText = document.getElementById('status');
+        const speedText = document.getElementById('speed');
+        
+        // Game variables
+        const gameState = {
+            auntX: 375,
+            auntY: 270,
+            sourCreamX: 400,
+            sourCreamY: 200,
+            sourceSpeed: 3,
+            maxSpeed: 3,
+            sourceVx: 0,
+            sourceVy: 0,
+            gameOver: false,
+            tiredTime: 0,
+            tired: false,
+            auntSpeed: 4
+        };
+        
+        // Create obstacles
+        const obstacles = [
+            { x: 150, y: 150, width: 80, height: 30 },
+            { x: 600, y: 250, width: 30, height: 120 },
+            { x: 300, y: 400, width: 100, height: 30 },
+            { x: 550, y: 80, width: 120, height: 30 },
+            { x: 100, y: 450, width: 150, height: 25 },
+            { x: 650, y: 450, width: 100, height: 25 },
+            { x: 350, y: 200, width: 30, height: 100 }
+        ];
+        
+        // Render obstacles
+        obstacles.forEach(obs => {
+            const obstacleDom = document.createElement('div');
+            obstacleDom.className = 'obstacle';
+            obstacleDom.style.left = obs.x + 'px';
+            obstacleDom.style.top = obs.y + 'px';
+            obstacleDom.style.width = obs.width + 'px';
+            obstacleDom.style.height = obs.height + 'px';
+            gameContainer.appendChild(obstacleDom);
+        });
+        
+        const keys = {};
+        let mouseX = gameState.auntX;
+        let mouseY = gameState.auntY;
+        
+        // Event listeners
+        document.addEventListener('keydown', (e) => {
+            keys[e.key] = true;
+        });
+        
+        document.addEventListener('keyup', (e) => {
+            keys[e.key] = false;
+        });
+        
+        gameContainer.addEventListener('mousemove', (e) => {
+            const rect = gameContainer.getBoundingClientRect();
+            mouseX = e.clientX - rect.left;
+            mouseY = e.clientY - rect.top;
+        });
+        
+        function checkCollisionWithObstacles(x, y, width, height) {
+            for (let obs of obstacles) {
+                if (x < obs.x + obs.width &&
+                    x + width > obs.x &&
+                    y < obs.y + obs.height &&
+                    y + height > obs.y) {
+                    return obs;
+                }
+            }
+            return null;
+        }
+        
+        function resolveCollision(x, y, width, height, vx, vy, isAunt = false) {
+            const obs = checkCollisionWithObstacles(x, y, width, height);
+            if (!obs) return { x, y, vx, vy };
+            
+            // Calculate overlap on each side
+            const overlapLeft = (x + width) - obs.x;
+            const overlapRight = (obs.x + obs.width) - x;
+            const overlapTop = (y + height) - obs.y;
+            const overlapBottom = (obs.y + obs.height) - y;
+            
+            const minOverlap = Math.min(overlapLeft, overlapRight, overlapTop, overlapBottom);
+            
+            if (minOverlap === overlapLeft) {
+                // Collision on left side
+                x = obs.x - width;
+                if (!isAunt) vx *= -0.5;
+            } else if (minOverlap === overlapRight) {
+                // Collision on right side
+                x = obs.x + obs.width;
+                if (!isAunt) vx *= -0.5;
+            } else if (minOverlap === overlapTop) {
+                // Collision on top
+                y = obs.y - height;
+                if (!isAunt) vy *= -0.5;
+            } else if (minOverlap === overlapBottom) {
+                // Collision on bottom
+                y = obs.y + obs.height;
+                if (!isAunt) vy *= -0.5;
+            }
+            
+            return { x, y, vx, vy };
+        }
+        
+        function updateAunt() {
+            let moveX = 0;
+            let moveY = 0;
+            
+            // Keyboard controls
+            if (keys['ArrowUp'] || keys['w'] || keys['W']) moveY -= gameState.auntSpeed;
+            if (keys['ArrowDown'] || keys['s'] || keys['S']) moveY += gameState.auntSpeed;
+            if (keys['ArrowLeft'] || keys['a'] || keys['A']) moveX -= gameState.auntSpeed;
+            if (keys['ArrowRight'] || keys['d'] || keys['D']) moveX += gameState.auntSpeed;
+            
+            // Mouse controls (towards mouse)
+            const dx = mouseX - gameState.auntX;
+            const dy = mouseY - gameState.auntY;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            
+            if (distance > 0) {
+                moveX += (dx / distance) * gameState.auntSpeed * 0.5;
+                moveY += (dy / distance) * gameState.auntSpeed * 0.5;
+            }
+            
+            gameState.auntX += moveX;
+            gameState.auntY += moveY;
+            
+            // Check collision with obstacles
+            const collision = checkCollisionWithObstacles(gameState.auntX, gameState.auntY, 50, 60);
+            if (collision) {
+                gameState.auntX -= moveX;
+                gameState.auntY -= moveY;
+            }
+            
+            // Boundary collision
+            gameState.auntX = Math.max(0, Math.min(gameState.auntX, gameContainer.offsetWidth - 50));
+            gameState.auntY = Math.max(0, Math.min(gameState.auntY, gameContainer.offsetHeight - 60));
+            
+            aunt.style.left = gameState.auntX + 'px';
+            aunt.style.top = gameState.auntY + 'px';
+        }
+        
+        function updateSourCream() {
+            // Calculate time being chased
+            gameState.tiredTime += 1;
+            
+            // Get tired after 5 seconds (5000ms = ~300 frames)
+            if (gameState.tiredTime > 300) {
+                gameState.tired = true;
+                gameState.sourceSpeed = Math.max(0.3, gameState.maxSpeed - (gameState.tiredTime - 300) / 100);
+            }
+            
+            // Update speedometer
+            const speedPercent = Math.round((gameState.sourceSpeed / gameState.maxSpeed) * 100);
+            speedText.textContent = speedPercent + '%';
+            
+            if (gameState.tired) {
+                statusText.textContent = 'Hapukoor väsib ära!';
+            }
+            
+            // Calculate direction away from aunt
+            const dx = gameState.auntX - gameState.sourCreamX;
+            const dy = gameState.auntY - gameState.sourCreamY;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            
+            if (distance > 0) {
+                gameState.sourceVx = -(dx / distance) * gameState.sourceSpeed;
+                gameState.sourceVy = -(dy / distance) * gameState.sourceSpeed;
+            }
+            
+            gameState.sourCreamX += gameState.sourceVx;
+            gameState.sourCreamY += gameState.sourceVy;
+            
+            // Check collision with obstacles
+            const res = resolveCollision(gameState.sourCreamX, gameState.sourCreamY, 50, 65, gameState.sourceVx, gameState.sourceVy);
+            gameState.sourCreamX = res.x;
+            gameState.sourCreamY = res.y;
+            gameState.sourceVx = res.vx;
+            gameState.sourceVy = res.vy;
+            
+            // Boundary collision with bounce
+            if (gameState.sourCreamX <= 0 || gameState.sourCreamX >= gameContainer.offsetWidth - 50) {
+                gameState.sourceVx *= -1;
+                gameState.sourCreamX = Math.max(0, Math.min(gameState.sourCreamX, gameContainer.offsetWidth - 50));
+            }
+            if (gameState.sourCreamY <= 0 || gameState.sourCreamY >= gameContainer.offsetHeight - 65) {
+                gameState.sourceVy *= -1;
+                gameState.sourCreamY = Math.max(0, Math.min(gameState.sourCreamY, gameContainer.offsetHeight - 65));
+            }
+            
+            sourCream.style.left = gameState.sourCreamX + 'px';
+            sourCream.style.top = gameState.sourCreamY + 'px';
+        }
+        
+        function checkCollision() {
+            const dx = gameState.auntX - gameState.sourCreamX;
+            const dy = gameState.auntY - gameState.sourCreamY;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            
+            if (distance < 50) {
+                // Caught!
+                gameState.gameOver = true;
+                
+                // Animate eating
+                const mouth = aunt.querySelector('.mouth');
+                mouth.classList.add('open');
+                sourCream.classList.add('eating-animation');
+                
+                setTimeout(() => {
+                    statusText.textContent = 'Võit! Söid hapukoore!';
+                    gameOverScreen.style.display = 'block';
+                }, 600);
+            }
+        }
+        
+        function gameLoop() {
+            if (!gameState.gameOver) {
+                updateAunt();
+                updateSourCream();
+                checkCollision();
+            }
+            
+            requestAnimationFrame(gameLoop);
+        }
+        
+        // Start the game
+        gameLoop();
+    </script>
+</body>
+</html>
