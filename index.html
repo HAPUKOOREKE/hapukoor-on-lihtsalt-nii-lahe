@@ -85,6 +85,24 @@
             display: none;
         }
         
+        .mouth::before,
+        .mouth::after {
+            content: '';
+            position: absolute;
+            width: 10px;
+            height: 15px;
+            background: #fff;
+            bottom: 0;
+        }
+        
+        .mouth::before {
+            left: 4px;
+        }
+        
+        .mouth::after {
+            right: 4px;
+        }
+        
         .mouth.open {
             display: block;
             width: 35px;
@@ -195,13 +213,49 @@
             border: 2px solid #333;
             box-shadow: inset 0 1px 3px rgba(0,0,0,0.5), 0 2px 5px rgba(0,0,0,0.3);
         }
+        
+        .person {
+            position: absolute;
+            width: 30px;
+            height: 40px;
+            background: #FFD700;
+            border-radius: 15px 15px 5px 5px;
+            animation: somersault 2s infinite linear;
+        }
+
+        #monster {
+            position: absolute;
+            width: 90px;
+            height: 90px;
+            background: radial-gradient(circle at 30% 30%, #8b0000 0%, #450000 45%, #000 100%);
+            border-radius: 50%;
+            box-shadow: 0 0 30px rgba(255, 0, 0, 0.8), inset 0 0 15px rgba(255, 80, 80, 0.7);
+            border: 3px solid #330000;
+            display: none;
+            z-index: 25;
+            transform: scale(0.7);
+            opacity: 0;
+            transition: transform 0.2s ease, opacity 0.2s ease;
+        }
+
+        #monster.visible {
+            display: block;
+            transform: scale(1);
+            opacity: 1;
+        }
+
+        @keyframes somersault {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
     </style>
 </head>
 <body>
-    <div id="gameContainer">
+<div id="gameContainer" tabindex="0">
         <div id="ui">
             <div>Käsud: Nooled / Hiir</div>
             <div>Seisund: <span id="status">Jooksmine...</span></div>
+            <div>Aeg: <span id="time">0</span>s</div>
         </div>
         
         <div id="aunt">
@@ -212,6 +266,7 @@
         </div>
         
         <div id="sourCream"></div>
+        <div id="monster"></div>
         
         <div id="speedometer">
             Hapukoore kiirus: <span id="speed">100%</span>
@@ -220,7 +275,7 @@
         <div id="gameOver">
             <div style="font-size: 32px; margin-bottom: 20px;">🎉 VÕIT! 🎉</div>
             <div>Sa söid hapukoore!</div>
-            <button onclick="location.reload()">Uus Mäng</button>
+            <button onclick="resetGame()">Uus Mäng</button>
         </div>
     </div>
 
@@ -231,6 +286,7 @@
         const gameOverScreen = document.getElementById('gameOver');
         const statusText = document.getElementById('status');
         const speedText = document.getElementById('speed');
+        const timeText = document.getElementById('time');
         
         // Game variables
         const gameState = {
@@ -238,14 +294,16 @@
             auntY: 270,
             sourCreamX: 400,
             sourCreamY: 200,
-            sourceSpeed: 3,
-            maxSpeed: 3,
+            sourceSpeed: 5,
+            maxSpeed: 5,
             sourceVx: 0,
             sourceVy: 0,
+            sourCreamAngle: Math.random() * Math.PI * 2,
+            monsterActive: false,
+            monsterTimer: null,
             gameOver: false,
-            tiredTime: 0,
-            tired: false,
-            auntSpeed: 4
+            auntSpeed: 4,
+            time: 0
         };
         
         // Create obstacles
@@ -270,23 +328,80 @@
             gameContainer.appendChild(obstacleDom);
         });
         
+        // Create people doing somersaults
+        const people = [
+            { x: 200, y: 100 },
+            { x: 500, y: 300 },
+            { x: 100, y: 500 },
+            { x: 600, y: 150 }
+        ];
+        
+        // Render people
+        people.forEach(person => {
+            const personDom = document.createElement('div');
+            personDom.className = 'person';
+            personDom.style.left = person.x + 'px';
+            personDom.style.top = person.y + 'px';
+            gameContainer.appendChild(personDom);
+        });
+        
+        const monsterElement = document.getElementById('monster');
+
+        function scheduleMonster() {
+            if (gameState.monsterTimer) {
+                clearTimeout(gameState.monsterTimer);
+            }
+            const delay = 8000 + Math.random() * 12000;
+            gameState.monsterTimer = setTimeout(showMonster, delay);
+        }
+
+        function showMonster() {
+            const padding = 80;
+            const x = Math.random() * (gameContainer.offsetWidth - padding * 2) + padding;
+            const y = Math.random() * (gameContainer.offsetHeight - padding * 2) + padding;
+            monsterElement.style.left = x + 'px';
+            monsterElement.style.top = y + 'px';
+            monsterElement.classList.add('visible');
+            gameState.monsterActive = true;
+
+            setTimeout(() => {
+                monsterElement.classList.remove('visible');
+                gameState.monsterActive = false;
+                scheduleMonster();
+            }, 1800);
+        }
+
+        function hideMonster() {
+            monsterElement.classList.remove('visible');
+            gameState.monsterActive = false;
+        }
+
         const keys = {};
-        let mouseX = gameState.auntX;
-        let mouseY = gameState.auntY;
+        let mouseX = gameState.auntX + 25;
+        let mouseY = gameState.auntY + 30;
         
         // Event listeners
         document.addEventListener('keydown', (e) => {
-            keys[e.key] = true;
+            const key = e.key.toLowerCase();
+            keys[key] = true;
+            if (['arrowup', 'arrowdown', 'arrowleft', 'arrowright', 'w', 'a', 's', 'd'].includes(key)) {
+                e.preventDefault();
+            }
         });
         
         document.addEventListener('keyup', (e) => {
-            keys[e.key] = false;
+            keys[e.key.toLowerCase()] = false;
         });
         
         gameContainer.addEventListener('mousemove', (e) => {
             const rect = gameContainer.getBoundingClientRect();
             mouseX = e.clientX - rect.left;
             mouseY = e.clientY - rect.top;
+        });
+        
+        gameContainer.addEventListener('mouseleave', () => {
+            mouseX = gameState.auntX + 25;
+            mouseY = gameState.auntY + 30;
         });
         
         function checkCollisionWithObstacles(x, y, width, height) {
@@ -314,21 +429,17 @@
             const minOverlap = Math.min(overlapLeft, overlapRight, overlapTop, overlapBottom);
             
             if (minOverlap === overlapLeft) {
-                // Collision on left side
                 x = obs.x - width;
-                if (!isAunt) vx *= -0.5;
+                vx = Math.abs(vx);
             } else if (minOverlap === overlapRight) {
-                // Collision on right side
                 x = obs.x + obs.width;
-                if (!isAunt) vx *= -0.5;
+                vx = -Math.abs(vx);
             } else if (minOverlap === overlapTop) {
-                // Collision on top
                 y = obs.y - height;
-                if (!isAunt) vy *= -0.5;
+                vy = Math.abs(vy);
             } else if (minOverlap === overlapBottom) {
-                // Collision on bottom
                 y = obs.y + obs.height;
-                if (!isAunt) vy *= -0.5;
+                vy = -Math.abs(vy);
             }
             
             return { x, y, vx, vy };
@@ -339,19 +450,21 @@
             let moveY = 0;
             
             // Keyboard controls
-            if (keys['ArrowUp'] || keys['w'] || keys['W']) moveY -= gameState.auntSpeed;
-            if (keys['ArrowDown'] || keys['s'] || keys['S']) moveY += gameState.auntSpeed;
-            if (keys['ArrowLeft'] || keys['a'] || keys['A']) moveX -= gameState.auntSpeed;
-            if (keys['ArrowRight'] || keys['d'] || keys['D']) moveX += gameState.auntSpeed;
+            if (keys['arrowup'] || keys['w']) moveY -= gameState.auntSpeed;
+            if (keys['arrowdown'] || keys['s']) moveY += gameState.auntSpeed;
+            if (keys['arrowleft'] || keys['a']) moveX -= gameState.auntSpeed;
+            if (keys['arrowright'] || keys['d']) moveX += gameState.auntSpeed;
             
             // Mouse controls (towards mouse)
-            const dx = mouseX - gameState.auntX;
-            const dy = mouseY - gameState.auntY;
+            const auntCenterX = gameState.auntX + 25;
+            const auntCenterY = gameState.auntY + 30;
+            const dx = mouseX - auntCenterX;
+            const dy = mouseY - auntCenterY;
             const distance = Math.sqrt(dx * dx + dy * dy);
             
-            if (distance > 0) {
-                moveX += (dx / distance) * gameState.auntSpeed * 0.5;
-                moveY += (dy / distance) * gameState.auntSpeed * 0.5;
+            if (distance > 10) {
+                moveX += (dx / distance) * gameState.auntSpeed * 0.65;
+                moveY += (dy / distance) * gameState.auntSpeed * 0.65;
             }
             
             gameState.auntX += moveX;
@@ -373,44 +486,59 @@
         }
         
         function updateSourCream() {
-            // Calculate time being chased
-            gameState.tiredTime += 1;
+            gameState.sourceSpeed = gameState.maxSpeed;
             
-            // Get tired after 5 seconds (5000ms = ~300 frames)
-            if (gameState.tiredTime > 300) {
-                gameState.tired = true;
-                gameState.sourceSpeed = Math.max(0.3, gameState.maxSpeed - (gameState.tiredTime - 300) / 100);
-            }
-            
-            // Update speedometer
             const speedPercent = Math.round((gameState.sourceSpeed / gameState.maxSpeed) * 100);
             speedText.textContent = speedPercent + '%';
-            
-            if (gameState.tired) {
-                statusText.textContent = 'Hapukoor väsib ära!';
-            }
-            
-            // Calculate direction away from aunt
-            const dx = gameState.auntX - gameState.sourCreamX;
-            const dy = gameState.auntY - gameState.sourCreamY;
+            statusText.textContent = 'Hapukoor jookseb!';
+
+            const centerAuntX = gameState.auntX + 25;
+            const centerAuntY = gameState.auntY + 30;
+            const dx = gameState.sourCreamX - centerAuntX;
+            const dy = gameState.sourCreamY - centerAuntY;
             const distance = Math.sqrt(dx * dx + dy * dy);
+            const awayAngle = Math.atan2(dy, dx);
             
-            if (distance > 0) {
-                gameState.sourceVx = -(dx / distance) * gameState.sourceSpeed;
-                gameState.sourceVy = -(dy / distance) * gameState.sourceSpeed;
+            if (!isFinite(gameState.sourCreamAngle)) {
+                gameState.sourCreamAngle = awayAngle;
             }
+            
+            if (distance < 180 || Math.random() < 0.05 || gameState.monsterActive) {
+                const jitter = (Math.random() - 0.5) * Math.PI * 0.8;
+                gameState.sourCreamAngle = awayAngle + jitter;
+            } else if (Math.random() < 0.03) {
+                gameState.sourCreamAngle += (Math.random() - 0.5) * Math.PI * 0.8;
+            }
+            
+            gameState.sourceVx = Math.cos(gameState.sourCreamAngle) * gameState.sourceSpeed;
+            gameState.sourceVy = Math.sin(gameState.sourCreamAngle) * gameState.sourceSpeed;
             
             gameState.sourCreamX += gameState.sourceVx;
             gameState.sourCreamY += gameState.sourceVy;
             
-            // Check collision with obstacles
             const res = resolveCollision(gameState.sourCreamX, gameState.sourCreamY, 50, 65, gameState.sourceVx, gameState.sourceVy);
+            const hitWall = res.vx !== gameState.sourceVx || res.vy !== gameState.sourceVy;
             gameState.sourCreamX = res.x;
             gameState.sourCreamY = res.y;
             gameState.sourceVx = res.vx;
             gameState.sourceVy = res.vy;
+
+            if (hitWall || Math.abs(gameState.sourceVx) < 1 || Math.abs(gameState.sourceVy) < 1) {
+                gameState.sourCreamAngle += Math.PI * 0.6 + (Math.random() - 0.5) * 0.5;
+                gameState.sourceVx = Math.cos(gameState.sourCreamAngle) * gameState.sourceSpeed;
+                gameState.sourceVy = Math.sin(gameState.sourCreamAngle) * gameState.sourceSpeed;
+            }
             
-            // Boundary collision with bounce
+            const nearLeft = gameState.sourCreamX < 45;
+            const nearRight = gameState.sourCreamX > gameContainer.offsetWidth - 95;
+            const nearTop = gameState.sourCreamY < 45;
+            const nearBottom = gameState.sourCreamY > gameContainer.offsetHeight - 110;
+            if (nearLeft || nearRight || nearTop || nearBottom) {
+                gameState.sourCreamAngle += Math.PI * 0.9 + (Math.random() - 0.5) * 0.6;
+                gameState.sourceVx = Math.cos(gameState.sourCreamAngle) * gameState.sourceSpeed;
+                gameState.sourceVy = Math.sin(gameState.sourCreamAngle) * gameState.sourceSpeed;
+            }
+            
             if (gameState.sourCreamX <= 0 || gameState.sourCreamX >= gameContainer.offsetWidth - 50) {
                 gameState.sourceVx *= -1;
                 gameState.sourCreamX = Math.max(0, Math.min(gameState.sourCreamX, gameContainer.offsetWidth - 50));
@@ -423,39 +551,89 @@
             sourCream.style.left = gameState.sourCreamX + 'px';
             sourCream.style.top = gameState.sourCreamY + 'px';
         }
-        
+
         function checkCollision() {
-            const dx = gameState.auntX - gameState.sourCreamX;
-            const dy = gameState.auntY - gameState.sourCreamY;
-            const distance = Math.sqrt(dx * dx + dy * dy);
-            
-            if (distance < 50) {
-                // Caught!
+            const auntRect = { x: gameState.auntX, y: gameState.auntY, width: 50, height: 60 };
+            const creamRect = { x: gameState.sourCreamX, y: gameState.sourCreamY, width: 50, height: 65 };
+
+            if (auntRect.x < creamRect.x + creamRect.width &&
+                auntRect.x + auntRect.width > creamRect.x &&
+                auntRect.y < creamRect.y + creamRect.height &&
+                auntRect.y + auntRect.height > creamRect.y) {
                 gameState.gameOver = true;
-                
-                // Animate eating
-                const mouth = aunt.querySelector('.mouth');
-                mouth.classList.add('open');
+                statusText.textContent = 'Sa jõudsid hapukoore kätte!';
+                gameOverScreen.innerHTML = `
+                    <div style="font-size: 32px; margin-bottom: 20px;">🎉 VÕIT! 🎉</div>
+                    <div>Sa söid hapukoore!</div>
+                    <button onclick="resetGame()">Uus Mäng</button>
+                `;
+                gameOverScreen.style.display = 'block';
+                aunt.querySelector('.mouth').classList.add('open');
                 sourCream.classList.add('eating-animation');
-                
-                setTimeout(() => {
-                    statusText.textContent = 'Võit! Söid hapukoore!';
-                    gameOverScreen.style.display = 'block';
-                }, 600);
             }
+        }
+        
+        function resetGame() {
+            gameState.auntX = 375;
+            gameState.auntY = 270;
+            gameState.sourCreamX = 400;
+            gameState.sourCreamY = 200;
+            gameState.sourceSpeed = 5;
+            gameState.maxSpeed = 5;
+            gameState.sourceVx = 0;
+            gameState.sourceVy = 0;
+            gameState.sourCreamAngle = Math.random() * Math.PI * 2;
+            gameState.gameOver = false;
+            gameState.time = 0;
+            
+            mouseX = gameState.auntX + 25;
+            mouseY = gameState.auntY + 30;
+            
+            aunt.style.left = gameState.auntX + 'px';
+            aunt.style.top = gameState.auntY + 'px';
+            sourCream.style.left = gameState.sourCreamX + 'px';
+            sourCream.style.top = gameState.sourCreamY + 'px';
+            monsterElement.classList.remove('visible');
+            gameState.monsterActive = false;
+            scheduleMonster();
+            gameContainer.focus();
+            
+            const mouth = aunt.querySelector('.mouth');
+            mouth.classList.remove('open');
+            sourCream.classList.remove('eating-animation');
+            
+            statusText.textContent = 'Jooksmine...';
+            timeText.textContent = '0';
+            gameOverScreen.style.display = 'none';
         }
         
         function gameLoop() {
             if (!gameState.gameOver) {
-                updateAunt();
-                updateSourCream();
-                checkCollision();
+                gameState.time += 1/60; // Assuming 60 FPS
+                timeText.textContent = Math.floor(gameState.time);
+                
+                if (gameState.time >= 60) {
+                    // Sour cream escaped!
+                    gameState.gameOver = true;
+                    statusText.textContent = 'Hapukoor põgenes!';
+                    gameOverScreen.innerHTML = `
+                        <div style="font-size: 32px; margin-bottom: 20px;">🎉 PÕGENEMINE! 🎉</div>
+                        <div>Hapukoor põgenes edukalt!</div>
+                        <button onclick="resetGame()">Uus Mäng</button>
+                    `;
+                    gameOverScreen.style.display = 'block';
+                } else {
+                    updateAunt();
+                    updateSourCream();
+                    checkCollision();
+                }
             }
             
             requestAnimationFrame(gameLoop);
         }
         
-        // Start the game
+        // Initialize positions and start the game
+        resetGame();
         gameLoop();
     </script>
 </body>
